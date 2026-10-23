@@ -1,0 +1,50 @@
+name: Armar MilalaApp Avisos
+
+# Se arma sola cada vez que cambia algo en el código, o a mano desde la pestaña Actions.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+
+      - name: Poner la llave de firma
+        env:
+          LLAVE_APK: ${{ secrets.LLAVE_APK }}
+        run: |
+          if [ -z "$LLAVE_APK" ]; then echo "::error::Falta el secreto LLAVE_APK (Settings > Secrets and variables > Actions)"; exit 1; fi
+          printf '%s' "$LLAVE_APK" | tr -d ' \r\n' | base64 -d > app/milala.jks
+
+      - name: Armar la app
+        env:
+          MILALA_KS_PASS: ${{ secrets.CLAVE_APK }}
+        run: |
+          if [ -z "$MILALA_KS_PASS" ]; then echo "::error::Falta el secreto CLAVE_APK (Settings > Secrets and variables > Actions)"; exit 1; fi
+          gradle :app:assembleRelease --no-daemon --stacktrace
+
+      - name: Publicar para descargar
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp app/build/outputs/apk/release/app-release.apk MilalaAvisos.apk
+          gh release create "v${{ github.run_number }}" MilalaAvisos.apk \
+            --target "$GITHUB_SHA" \
+            --title "MilalaApp Avisos 1.0.${{ github.run_number }}" \
+            --notes "Descarga MilalaAvisos.apk desde el teléfono y ábrelo para instalar o actualizar." \
+            --latest
