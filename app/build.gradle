@@ -1,0 +1,55 @@
+plugins {
+    id 'com.android.application'
+}
+
+// GitHub numera cada armado: así cada versión nueva reemplaza a la anterior en el teléfono.
+def numero = (System.getenv('GITHUB_RUN_NUMBER') ?: '1') as Integer
+
+android {
+    namespace 'cl.milalaapp.avisos'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId 'cl.milalaapp.avisos'
+        minSdk 26
+        targetSdk 35
+        versionCode numero
+        versionName "1.0.${numero}"
+    }
+
+    // La llave que firma la app vive en los secretos de GitHub (LLAVE_APK y CLAVE_APK), nunca en el código.
+    signingConfigs {
+        release {
+            storeFile file('milala.jks')
+            storePassword System.getenv('MILALA_KS_PASS')
+            keyAlias 'milala'
+            keyPassword System.getenv('MILALA_KS_PASS')
+            storeType 'pkcs12'
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.release
+        }
+    }
+
+    buildFeatures {
+        buildConfig true
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    lint {
+        checkReleaseBuilds false
+        abortOnError false
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}
